@@ -1,0 +1,17 @@
+[Unit]
+Description=Site-Img Frontend (Angular)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/site-img
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+ExecStart=/usr/bin/ng serve --host 0.0.0.0 --port 7070
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/site-img-frontend.log
+StandardError=append:/var/log/site-img-frontend.log
+
+[Install]
+WantedBy=multi-user.target

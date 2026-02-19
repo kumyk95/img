@@ -1,0 +1,18 @@
+[Unit]
+Description=Site-Img Backend API
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/site-img
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONPATH=/root/site-img"
+ExecStart=/usr/bin/python3 /root/site-img/backend/main.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/site-img-backend.log
+StandardError=append:/var/log/site-img-backend.log
+
+[Install]
+WantedBy=multi-user.target
