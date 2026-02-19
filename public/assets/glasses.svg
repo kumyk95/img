@@ -1,0 +1,42 @@
+<svg width="500" height="200" viewBox="0 0 500 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="lensGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#222;stop-opacity:0.95" />
+      <stop offset="50%" style="stop-color:#000;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#222;stop-opacity:0.95" />
+    </linearGradient>
+    <linearGradient id="frameGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#333;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#111;stop-opacity:1" />
+    </linearGradient>
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dx="2" dy="4" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.5"/>
+      </feComponentTransfer>
+      <feMerge> 
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/> 
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <g filter="url(#dropShadow)">
+    <!-- Frame -->
+    <path d="M50,50 Q120,40 190,50 L210,50 Q250,40 290,50 L310,50 Q380,40 450,50 Q460,50 460,70 L455,120 Q450,150 400,150 Q350,150 340,110 Q335,90 310,90 L290,90 Q270,90 260,80 L250,70 L240,80 Q230,90 210,90 L190,90 Q165,90 160,110 Q150,150 100,150 Q50,150 45,120 L40,70 Q40,50 50,50 Z" fill="url(#frameGrad)" stroke="#000" stroke-width="2"/>
+    
+    <!-- Left Lens -->
+    <path d="M60,60 Q110,55 160,60 Q170,60 170,80 Q170,130 110,135 Q60,135 55,90 Q55,70 60,60 Z" fill="url(#lensGrad)" />
+    
+    <!-- Right Lens -->
+    <path d="M340,60 Q390,55 440,60 Q445,70 445,90 Q440,135 390,135 Q330,130 330,80 Q330,60 340,60 Z" fill="url(#lensGrad)" />
+    
+    <!-- Bridge -->
+    <path d="M190,60 Q250,50 310,60" fill="none" stroke="#444" stroke-width="3" />
+    
+    <!-- Reflections -->
+    <ellipse cx="90" cy="80" rx="20" ry="10" transform="rotate(-20 90 80)" fill="rgba(255,255,255,0.2)" />
+    <ellipse cx="370" cy="80" rx="20" ry="10" transform="rotate(-20 370 80)" fill="rgba(255,255,255,0.2)" />
+  </g>
+</svg>

@@ -1,0 +1,186 @@
+import { Injectable } from '@angular/core';
+import { BehaviorSubject, Subscription } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+
+export interface SimulationStep {
+    id: number;
+    name: string;
+    description: string;
+    imageKey: string;
+    imageDataUrl?: string;
+    status: 'pending' | 'processing' | 'completed';
+    score?: number;
+    time?: number;
+    recognitionTime?: number;
+}
+
+@Injectable({
+    providedIn: 'root'
+})
+export class SimulationService {
+    private steps: SimulationStep[] = [
+        { id: 1, name: 'Original', description: 'Original Photo', imageKey: 'original', status: 'pending' },
+        { id: 2, name: 'With Glasses', description: 'Added Glasses + ID', imageKey: 'sunglasses', status: 'pending' },
+        { id: 3, name: 'Inpainting', description: 'Recovery (Telea)', imageKey: 'inpainted', status: 'pending' },
+        { id: 4, name: 'CNN', description: 'Convolutional NN (NS)', imageKey: 'ar1', status: 'pending' },
+        { id: 5, name: 'GAN', description: 'Generative Adversarial Net', imageKey: 'ar2', status: 'pending' },
+        { id: 6, name: 'Hybrid', description: 'HI-RES Hybrid Recovery', imageKey: 'ar3', status: 'pending' }
+    ];
+
+    private _steps$ = new BehaviorSubject<SimulationStep[]>(this.steps);
+    public steps$ = this._steps$.asObservable();
+
+    private _isRunning$ = new BehaviorSubject<boolean>(false);
+    public isRunning$ = this._isRunning$.asObservable();
+
+    private _isPaused$ = new BehaviorSubject<boolean>(false);
+    public isPaused$ = this._isPaused$.asObservable();
+
+    private sessionId: string | null = null;
+    private currentFile: File | null = null;
+
+    constructor(private http: HttpClient) { }
+
+    private baseUrl = '/api';
+
+    updateStepImage(id: number, dataUrl: string, file?: File) {
+        const step = this.steps.find(s => s.id === id);
+        if (step) {
+            step.imageDataUrl = dataUrl;
+            step.status = 'completed';
+            this._steps$.next([...this.steps]);
+
+            if (id === 1 && file) {
+                this.currentFile = file;
+                this.uploadOriginalImage(file);
+            }
+        }
+    }
+
+    private uploadOriginalImage(file: File) {
+        const formData = new FormData();
+        formData.append('file', file, file.name);
+        this.http.post<any>(`${this.baseUrl}/upload`, formData).subscribe({
+            next: (res: any) => {
+                this.sessionId = res.session_id;
+                console.log('Image uploaded, session:', this.sessionId);
+            },
+            error: (err: any) => console.error('Upload failed', err)
+        });
+    }
+
+    run() {
+        if (!this.sessionId) {
+            // Wait for upload if not yet done
+            setTimeout(() => {
+                if (this.sessionId) this.run();
+                else console.warn('Waiting for upload to complete...');
+            }, 500);
+            return;
+        }
+
+        if (this._isRunning$.value && !this._isPaused$.value) return;
+
+        this._isRunning$.next(true);
+        this._isPaused$.next(false);
+
+        // Start from first non-completed step, or Step 2
+        const nextStep = this.steps.find(s => s.status === 'pending');
+        if (nextStep) {
+            this.processStep(nextStep.id);
+        } else {
+            this._isRunning$.next(false);
+        }
+    }
+
+    private processStep(stepId: number) {
+        if (!this._isRunning$.value || this._isPaused$.value || !this.sessionId) return;
+
+        const index = this.steps.findIndex(s => s.id === stepId);
+        if (index === -1) {
+            this._isRunning$.next(false);
+            return;
+        }
+
+        const step = this.steps[index];
+        step.status = 'processing';
+        this._steps$.next([...this.steps]);
+
+        let endpoint = '';
+        if (stepId === 2) endpoint = '/process/glasses';
+        else if (stepId === 3) endpoint = '/process/remove-glasses';
+        else {
+            endpoint = `/process/method/${stepId}`;
+        }
+
+        this.http.post<any>(`${this.baseUrl}${endpoint}?session_id=${this.sessionId}`, {}).subscribe({
+            next: (res: any) => {
+                step.status = 'completed';
+                step.imageDataUrl = res.image_url;
+                step.score = res.score;
+                step.time = res.time_ms;
+                step.recognitionTime = res.recognition_time_ms;
+                this._steps$.next([...this.steps]);
+
+                setTimeout(() => {
+                    if (this._isRunning$.value && !this._isPaused$.value) {
+                        const nextStep = this.steps[index + 1];
+                        if (nextStep) {
+                            this.processStep(nextStep.id);
+                        } else {
+                            this._isRunning$.next(false);
+                        }
+                    }
+                }, 800);
+            },
+            error: (err: any) => {
+                console.error(`Step ${stepId} failed`, err);
+                step.status = 'pending';
+                this._isRunning$.next(false);
+            }
+        });
+    }
+
+    pause() {
+        this._isPaused$.next(true);
+    }
+
+    continue() {
+        this._isPaused$.next(false);
+        this._isRunning$.next(true);
+        const nextStep = this.steps.find(s => s.status === 'pending');
+        if (nextStep) this.processStep(nextStep.id);
+    }
+
+    stop() {
+        this._isRunning$.next(false);
+        this._isPaused$.next(false);
+        this.resetSteps();
+        this.sessionId = null;
+    }
+
+    resetSteps() {
+        this.steps.forEach((s, idx) => {
+            s.status = 'pending';
+            s.score = undefined;
+            s.time = undefined;
+            s.recognitionTime = undefined;
+            if (idx !== 0) s.imageDataUrl = undefined;
+        });
+        this._steps$.next([...this.steps]);
+    }
+
+    exportData() {
+        const csvContent = "data:text/csv;charset=utf-8,"
+            + "ID,Name,Status,Score,ProcTime(ms),RecTime(ms)\n"
+            + this.steps.map(e => `${e.id},${e.name},${e.status},${e.score?.toFixed(4) || ''},${e.time?.toFixed(0) || ''},${e.recognitionTime?.toFixed(0) || ''}`).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `results_${this.sessionId || 'exp'}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+}

@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+numpy
+opencv-python-headless
+Pillow
+requests
+deepface
+mediapipe
+dlib-bin

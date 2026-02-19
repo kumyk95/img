@@ -1,0 +1,133 @@
+<div class="container">
+    <header>
+        <h1>Image Reconstruction Research</h1>
+        <div class="subtitle">Advanced Recovery and Identification System</div>
+    </header>
+
+    <div class="controls-container">
+        <!-- Group 1: Input -->
+        <div class="control-group">
+            <span class="group-number">1</span>
+            <div class="group-label">Data</div>
+            <button class="btn-icon-text" (click)="fileInput.click()">
+                <i class="fas fa-upload"></i>
+                Upload
+            </button>
+            <input #fileInput type="file" (change)="onFileSelected($event)" accept="image/*" multiple style="display: none;">
+        </div>
+
+        <!-- Group 2: Simulation Control -->
+        <div class="control-group playback">
+            <span class="group-number">2</span>
+            <div class="group-label">Simulation</div>
+            <div class="playback-buttons">
+                <button class="btn-icon" (click)="run()" [disabled]="(isRunning$ | async)" title="Start">
+                    <i class="fas fa-play"></i>
+                </button>
+
+                <button class="btn-icon" (click)="pause()" *ngIf="!(isPaused$ | async)"
+                    [disabled]="!(isRunning$ | async)" title="Pause">
+                    <i class="fas fa-pause"></i>
+                </button>
+
+                <button class="btn-icon" (click)="continue()" *ngIf="(isPaused$ | async)" title="Continue">
+                    <i class="fas fa-play"></i>
+                </button>
+
+                <button class="btn-icon danger" (click)="stop()" title="Stop">
+                    <i class="fas fa-stop"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Group 3: Output -->
+        <div class="control-group">
+            <span class="group-number">3</span>
+            <div class="group-label">Result</div>
+            <button class="btn-icon-text" (click)="export()">
+                <i class="fas fa-file-export"></i>
+                Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Batch Progress Bar -->
+    <div class="batch-progress" *ngIf="batchProgress !== null">
+        <div class="progress-info">
+            <span>Processing batch: {{ currentBatchIndex + 1 }} / {{ totalBatchSize }}</span>
+            <span>{{ batchProgress | number:'1.0-0' }}%</span>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar" [style.width.%]="batchProgress"></div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card" *ngFor="let step of steps$ | async" [class.active]="step.status === 'processing'">
+            <div class="card-header">
+                <div class="title-group">
+                    <span class="card-title">{{ step.name }}</span>
+                    <span class="file-name" *ngIf="step.fileName">{{ step.fileName }}</span>
+                </div>
+                <span class="status-badge" [ngClass]="step.status">{{ step.status }}</span>
+            </div>
+
+            <div class="image-container">
+                <img *ngIf="step.imageDataUrl" [src]="step.imageDataUrl" alt="{{ step.name }}">
+                <img *ngIf="!step.imageDataUrl && step.status !== 'pending'"
+                    [src]="'https://placehold.co/600x600/1e293b/cbd5e1?text=' + step.name.replace(' ', '+')"
+                    alt="{{ step.name }}">
+                <div *ngIf="!step.imageDataUrl && step.status === 'pending'" class="placeholder">
+                    <i class="fas fa-image"></i>
+                </div>
+                <div class="loading-overlay" *ngIf="step.status === 'processing'">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">Score</span>
+                    <span class="metric-value">{{ step.score ? (step.score | number:'1.4-4') : '--' }}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Proc. Time</span>
+                    <span class="metric-value">{{ step.time ? (step.time | number:'1.0-0') + ' ms' : '--' }}</span>
+                </div>
+                <div class="metric" *ngIf="step.recognitionTime">
+                    <span class="metric-label">Rec. Time</span>
+                    <span class="metric-value">{{ step.recognitionTime | number:'1.0-0' }} ms</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Canvas for processing -->
+    <canvas #processingCanvas style="display: none;"></canvas>
+
+    <div class="results-panel">
+        <h2>Session Results</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Stage</th>
+                    <th>Status</th>
+                    <th>Score</th>
+                    <th>Proc. Time</th>
+                    <th>Rec. Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let step of steps$ | async">
+                    <td>{{ step.id }}</td>
+                    <td>{{ step.name }}</td>
+                    <td>{{ step.status }}</td>
+                    <td>{{ step.score ? (step.score | number:'1.4-4') : '-' }}</td>
+                    <td>{{ step.time ? (step.time | number:'1.0-0') + ' ms' : '-' }}</td>
+                    <td>{{ step.recognitionTime ? (step.recognitionTime | number:'1.0-0') + ' ms' : '-' }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
